@@ -1,0 +1,79 @@
+name: "Monoweave Preview"
+description: >-
+  Preview package changes prior to publish, using the Monoweave tool.
+inputs:
+  token:
+    description: >-
+      GITHUB_TOKEN used to comment on pull requests.
+    default: ${{ github.token }}
+  monoweave-command:
+    description: >-
+      Custom monoweave command if you need to use a shell script or alternative command instead.
+    default: "yarn monoweave"
+runs:
+  using: composite
+  steps:
+    - name: Prepare Temp Folder
+      shell: bash
+      id: context
+      run: |
+        tmpdir="${{ runner.temp }}/github-action-preview"
+        echo "tmpdir=${tmpdir}" >> "$GITHUB_OUTPUT"
+        mkdir -p "${tmpdir}"
+
+    - name: Run Monoweave in Dry Run Mode
+      shell: bash
+      id: run-monoweave
+      run: |
+        echo "<!-- MONOWEAVE:BELOW -->" > "${{ steps.context.outputs.tmpdir }}/CHANGELOG.md"
+        ${{ inputs.monoweave-command }} --dry-run \
+          --log-level 0 \
+          --no-push \
+          --git-base-branch origin/${{ github.base_ref }} \
+          --changelog-filename "${{ steps.context.outputs.tmpdir }}/CHANGELOG.md" \
+          --changeset-filename "${{ steps.context.outputs.tmpdir }}/changes.json" \
+          --force-write-change-files
+
+    - name: Write Preview File
+      shell: bash
+      env:
+        PREVIEW_FILE: ${{ format('{0}/changelog_preview.md', steps.context.outputs.tmpdir) }}
+      run: |
+        {
+          echo "<!-- MONOWEAVE_CHANGELOG_PREVIEW -->";
+          echo "# Package Release Preview";
+          echo;
+        } >> "${PREVIEW_FILE}"
+
+        if jq -e '. == {}' "${{ steps.context.outputs.tmpdir }}/changes.json" >/dev/null; then
+          {
+            echo -n "This pull request does not introduce any package version changes. ";
+            echo "If this is incorrect, please ensure that you are using conventional commit prefixes.";
+          } >> "${PREVIEW_FILE}"
+        else
+          {
+            echo "This Pull Request introduces the following changes:";
+            echo;
+            cat "${{ steps.context.outputs.tmpdir }}/CHANGELOG.md";
+          } >> "${PREVIEW_FILE}"
+        fi
+
+    - name: Check for Changelog Comment
+      uses: peter-evans/find-comment@a54c31d7fa095754bfef525c0c8e5e5674c4b4b1 # v2.4.0
+      id: found-comment
+      with:
+        token: ${{ inputs.token }}
+        issue-number: ${{ github.event.pull_request.number }}
+        body-includes: <!-- MONOWEAVE_CHANGELOG_PREVIEW -->
+
+    - name: Post Changelog to PR
+      uses: peter-evans/create-or-update-comment@23ff15729ef2fc348714a3bb66d2f655ca9066f2 # v3.1.0
+      with:
+        token: ${{ inputs.token }}
+        comment-id: ${{ steps.found-comment.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
+        edit-mode: replace
+        body-path: ${{ steps.context.outputs.tmpdir }}/changelog_preview.md
+branding:
+  icon: git-pull-request
+  color: gray-dark
