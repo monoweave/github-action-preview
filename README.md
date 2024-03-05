@@ -26,6 +26,8 @@ permissions:
 | ---- | ----------- | ------- |
 | `token` | `GITHUB_TOKEN` or PAT with ability to comment on pull requests. | `${{ github.token }}` |
 | `monoweave-command` | The monoweave executable to run. | `yarn monoweave` |
+| `preview-comment-title` | Title of preview comment on pull request. | `Package Release Preview` |
+| `no-changes-message` | Message to comment if no changes are detected. | See action.yaml for default. |
 
 ## License
 

@@ -10,6 +10,15 @@ inputs:
     description: >-
       Custom monoweave command if you need to use a shell script or alternative command instead.
     default: "yarn monoweave"
+  preview-comment-title:
+    description: Title of pull request preview comment.
+    default: "Package Release Preview"
+  no-changes-message:
+    description: Message to comment if there are no changes detected.
+    default: >-
+      This pull request does not introduce any package version changes.
+      If this is incorrect, please ensure that you are using conventional commit prefixes,
+      or have provided a version file.
 runs:
   using: composite
   steps:
@@ -38,17 +47,18 @@ runs:
       shell: bash
       env:
         PREVIEW_FILE: ${{ format('{0}/changelog_preview.md', steps.context.outputs.tmpdir) }}
+        COMMENT_TITLE: ${{ inputs.preview-comment-title }}
+        NO_CHANGES_MESSAGE: ${{ inputs.no-changes-message }}
       run: |
         {
           echo "<!-- MONOWEAVE_CHANGELOG_PREVIEW -->";
-          echo "# Package Release Preview";
+          echo "# ${COMMENT_TITLE}";
           echo;
         } >> "${PREVIEW_FILE}"
 
         if jq -e '. == {}' "${{ steps.context.outputs.tmpdir }}/changes.json" >/dev/null; then
           {
-            echo -n "This pull request does not introduce any package version changes. ";
-            echo "If this is incorrect, please ensure that you are using conventional commit prefixes.";
+            echo "${NO_CHANGES_MESSAGE}";
           } >> "${PREVIEW_FILE}"
         else
           {
