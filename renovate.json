@@ -8,7 +8,7 @@
     "rebaseWhen": "behind-base-branch",
     "separateMajorMinor": true,
     "separateMinorPatch": false,
-    "stabilityDays": 21,
+    "minimumReleaseAge": "21 days",
     "internalChecksFilter": "strict",
     "dependencyDashboard": true,
     "timezone": "America/Toronto",
@@ -17,9 +17,14 @@
     ],
     "packageRules": [
         {
-            "matchUpdateTypes": ["patch", "minor"],
+            "matchUpdateTypes": [
+                "patch",
+                "minor"
+            ],
             "matchCurrentVersion": "!/^0/",
-            "addLabels": ["automerge"],
+            "addLabels": [
+                "automerge"
+            ],
             "automerge": true,
             "automergeType": "pr",
             "automergeStrategy": "squash"
